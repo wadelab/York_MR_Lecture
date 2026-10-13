@@ -1,4 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MRI Contrast Explorer</title>
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap">
@@ -36,9 +42,10 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 17px;
-  line-height: 1.45; padding-inline: 20px; padding-block: 24px 40px;
+  line-height: 1.45; margin: 0; padding-inline: 20px; padding-block: 24px 40px;
 }
 .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 22px; }
 header h1 {
@@ -74,7 +81,25 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 68ch; }
   .verdict .w { font-size: 20px; min-height: 2.5em; display: flex; align-items: flex-end; line-height: 1.2; }
   .verdict .p { font-size: 12px; }
   .toggles { justify-content: flex-start; font-size: 14px; flex-direction: column; gap: 4px; }
-  .noisenote { text-align: left; font-size: 12px; }
+  .noisenote { grid-column: 1 / -1; max-width: none; text-align: left; font-size: 12px; }
+}
+/* Phone held sideways: little height, so the image sits beside the controls and stays in view */
+@media (orientation: landscape) and (max-height: 500px) {
+  .main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .well {
+    position: sticky; top: 0; z-index: 5; grid-template-columns: minmax(0, 1fr); padding: 10px; gap: 6px;
+    max-height: 100vh; max-height: 100svh; overflow-y: auto;
+  }
+  .well canvas {
+    width: auto; max-width: 100%;
+    height: clamp(110px, calc(100vh - 190px), 230px); height: clamp(110px, calc(100svh - 190px), 230px);
+  }
+  .side { justify-items: center; gap: 6px; }
+  .verdict { text-align: center; gap: 2px; }
+  .verdict .w { font-size: 20px; min-height: 0; display: block; }
+  .verdict .p, .verdict .s { font-size: 12px; }
+  .toggles { flex-direction: row; justify-content: center; font-size: 14px; gap: 4px 12px; }
+  .noisenote { text-align: center; font-size: 12px; }
 }
 
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 20px; min-width: 0; }
@@ -113,7 +138,8 @@ footer { font-size: 14px; color: var(--muted); display: grid; gap: 6px; max-widt
 footer a { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header>
     <h1>MRI Contrast Explorer</h1>
@@ -133,8 +159,8 @@ footer a { color: var(--accent); }
           <label><input type="checkbox" id="rescale" checked> Rescale to brightest point</label>
           <label><input type="checkbox" id="noise"> Add scanner noise</label>
         </div>
-        <p class="noisenote" id="noisenote" hidden>The same noise is added in every mode. Fast gradient-echo scans get little signal per pulse, so real scans average many repeats to make up for it.</p>
       </div>
+      <p class="noisenote" id="noisenote" hidden>The same noise is added in every mode. Fast gradient-echo scans get little signal per pulse, so real scans average many repeats to make up for it.</p>
     </section>
 
     <section class="panel" aria-label="Controls">
@@ -487,3 +513,5 @@ footer a { color: var(--accent); }
   syncControls(); render();
 })();
 </script>
+</body>
+</html>
