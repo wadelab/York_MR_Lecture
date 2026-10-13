@@ -13,3 +13,7 @@ It shows how TR, TE and inversion time change image contrast between white matte
 The anatomy is a single axial slice of the MNI ICBM152 2009a tissue probability maps (Fonov et al. 2011, *NeuroImage* 54:313; Fonov et al. 2009, *NeuroImage* 47:S102), embedded in the page. The template is redistributed under its licence:
 
 > Copyright (C) 1993–2009 Louis Collins, McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University. Permission to use, copy, modify, and distribute this software and its documentation for any purpose and without fee is hereby granted, provided that the above copyright notice appear in all copies. The authors and McGill University make no representations about the suitability of this software for any purpose. It is provided "as is" without express or implied warranty. The authors are not responsible for any data loss, equipment damage, property loss, or injury to subjects or patients resulting from the use or misuse of this software package.
+
+## Licence
+
+The code and text are released under the [MIT Licence](LICENSE). The embedded MNI template slice remains under its own licence, quoted above.
