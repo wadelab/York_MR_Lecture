@@ -8,7 +8,7 @@ Teaching material for an MRI lecture at York.
 
 [`mri_contrast_explorer_1.html`](mri_contrast_explorer_1.html) is a single, self-contained page, so it also works offline: download it and open it in any browser.
 
-It shows how TR, TE and inversion time change image contrast between white matter, grey matter and CSF. Signals come from textbook equations with ideal pulses, using published 3 T relaxation times and water contents. Motion, flow and magnetic-field effects are not modelled. Sources for the tissue values are listed in the page footer.
+It shows how TR, TE and flip angle change image contrast between white matter, grey matter and CSF. Signals come from textbook equations with ideal pulses, using published 3 T relaxation times and water contents. Motion, flow and magnetic-field effects are not modelled. Sources for the tissue values are listed in the page footer.
 
 ## Brain template
 

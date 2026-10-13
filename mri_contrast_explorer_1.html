@@ -141,7 +141,6 @@ footer a { color: var(--accent); }
       <div class="tabs" role="group" aria-label="Sequence">
         <button id="tab-se" aria-pressed="true" data-mode="se">Spin echo</button>
         <button id="tab-gre" aria-pressed="false" data-mode="gre">Gradient echo</button>
-        <button id="tab-ir" aria-pressed="false" data-mode="ir">Inversion recovery</button>
       </div>
       <p class="explain" id="explain"></p>
 
@@ -161,11 +160,6 @@ footer a { color: var(--accent); }
           <input type="range" id="fa" min="1" max="60" step="0.5">
           <div class="ends"><span>small (PD-weighted)</span><span>large (T1-weighted)</span></div>
         </div>
-        <div class="slider" id="row-ti" hidden>
-          <div class="top"><label class="name" for="ti">TI: wait after the inversion pulse</label><output id="ti-out" for="ti"></output></div>
-          <input type="range" id="ti" min="50" max="4000" step="5">
-          <div class="ends"><span>short</span><span>long</span></div>
-        </div>
         <div class="fixed" id="fixed"></div>
       </div>
 
@@ -174,7 +168,6 @@ footer a { color: var(--accent); }
         <button data-preset="t1">T1-weighted</button>
         <button data-preset="pd">PD-weighted</button>
         <button data-preset="t2">T2-weighted</button>
-        <button data-preset="flair">FLAIR</button>
       </div>
 
       <div class="readout">
@@ -196,7 +189,7 @@ footer a { color: var(--accent); }
   </div>
 
   <footer>
-    <div><strong>About the simulation.</strong> Signals come from textbook equations with ideal pulses, using published 3 T values: T1 white matter 970 ms, grey matter 1500 ms, CSF 4300 ms; T2 73, 88 and 2030 ms; water content 65%, 78% and 97%. The anatomy is the average MNI152 brain, so edges are blurred and a thin rim around the ventricles is classed as grey matter. Gradient echo uses TR 20 ms and TE 3 ms; inversion recovery uses TR 10 s. The noise toggle adds the same fixed noise to every image; motion, flow and magnetic-field effects are not modelled.</div>
+    <div><strong>About the simulation.</strong> Signals come from textbook equations with ideal pulses, using published 3 T values: T1 white matter 970 ms, grey matter 1500 ms, CSF 4300 ms; T2 73, 88 and 2030 ms; water content 65%, 78% and 97%. The anatomy is the average MNI152 brain, so edges are blurred and a thin rim around the ventricles is classed as grey matter. Gradient echo uses TR 20 ms and TE 3 ms. The noise toggle adds the same fixed noise to every image; motion, flow and magnetic-field effects are not modelled.</div>
     <div>Values: <a href="https://pages.fmrib.ox.ac.uk/fsl/fsl_mrs/constants.html" target="_blank" rel="noopener">FSL-MRS tissue constants</a>; CSF T1 from Rooney et al. 2007, <i>Magn Reson Med</i> 57:308; CSF T2 from Spijkerman et al. 2018, <i>MAGMA</i> 31:415. Brain template: MNI ICBM152 2009a.</div>
   </footer>
 </div>
@@ -223,7 +216,7 @@ footer a { color: var(--accent); }
   const T1 = { WM: 970, GM: 1500, CSF: 4300 };
   const T2 = { WM: 73, GM: 88, CSF: 2030 };
   const PD = { WM: 0.65, GM: 0.78, CSF: 0.97 };
-  const GRE_TR = 20, IR_TR = 10000;
+  const GRE_TR = 20;
 
   const se = (t, TR, TE) => {
     const rec = Math.max(0, 1 - 2 * Math.exp(-(TR - TE / 2) / T1[t]) + Math.exp(-TR / T1[t]));
@@ -233,15 +226,13 @@ footer a { color: var(--accent); }
     const a = fa * Math.PI / 180, E1 = Math.exp(-GRE_TR / T1[t]);
     return PD[t] * Math.sin(a) * (1 - E1) / (1 - Math.cos(a) * E1);
   };
-  const ir = (t, TI, TE) => PD[t] * (1 - 2 * Math.exp(-TI / T1[t]) + Math.exp(-IR_TR / T1[t])) * Math.exp(-TE / T2[t]);
-  const irNull = t => T1[t] * Math.log(2 / (1 + Math.exp(-IR_TR / T1[t])));
 
   // TR slider is logarithmic: 0..1000 -> 300..10000 ms
   const TR_MIN = 300, TR_MAX = 10000;
   const trFromPos = p => TR_MIN * Math.pow(TR_MAX / TR_MIN, p / 1000);
   const posFromTr = tr => Math.round(1000 * Math.log(tr / TR_MIN) / Math.log(TR_MAX / TR_MIN));
 
-  const state = { mode: "se", TR: 10000, TE: 15, FA: 2, TI: Math.round(irNull("CSF")), TEir: 100, active: "TR" };
+  const state = { mode: "se", TR: 10000, TE: 15, FA: 2, active: "TR" };
 
   const $ = id => document.getElementById(id);
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -261,8 +252,7 @@ footer a { color: var(--accent); }
 
   function signals() {
     if (state.mode === "se") return Object.fromEntries(T.map(t => [t, se(t, state.TR, state.TE)]));
-    if (state.mode === "gre") return Object.fromEntries(T.map(t => [t, gre(t, state.FA)]));
-    return Object.fromEntries(T.map(t => [t, ir(t, state.TI, state.TEir)]));
+    return Object.fromEntries(T.map(t => [t, gre(t, state.FA)]));
   }
 
   // TR as displayed (10 ms steps below 1 s, 0.1 s steps above), so labels never disagree with the readout
@@ -278,23 +268,14 @@ footer a { color: var(--accent); }
       if (TR >= 2000 && TE >= 70 && csfTop) return "T2-weighted";
       return "In between";
     }
-    if (state.mode === "gre") {
-      if (state.FA <= 3) return "PD-weighted";
-      if (state.FA >= 15) return "T1-weighted";
-      return "In between";
-    }
-    const nulled = T.filter(t => Math.abs(s[t]) < 0.025 * PD[t]);
-    if (!nulled.length) return "Inversion recovery";
-    if (nulled.length === 1 && nulled[0] === "CSF") return state.TEir >= 80 ? "FLAIR: fluid off" : "Fluid off";
-    const names = nulled.map(t => NAME[t]);
-    const txt = names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0];
-    return txt[0].toUpperCase() + txt.slice(1) + " off";
+    if (state.FA <= 3) return "PD-weighted";
+    if (state.FA >= 15) return "T1-weighted";
+    return "In between";
   }
 
   const EXPLAIN = {
     se: "TR sets how long tissues recover before the sequence repeats, so a short TR brings out differences in T1. TE sets how long the signal fades before we listen, so a long TE brings out differences in T2.",
-    gre: "Fast scans pulse every 20 ms. A small flip angle barely disturbs the tissue, so brightness follows water content. A large flip angle means recovery between pulses dominates, giving T1 weighting.",
-    ir: "A first pulse flips the magnetisation upside down. Each tissue then recovers through zero at its own speed, and at that moment it gives no signal. Choose TI to switch a tissue off. Dark outlines can appear where two tissues meet: if one is still upside down and the other is not, their signals cancel."
+    gre: "Fast scans pulse every 20 ms. A small flip angle barely disturbs the tissue, so brightness follows water content. A large flip angle means recovery between pulses dominates, giving T1 weighting."
   };
 
   const img = $("img"), ictx = img.getContext("2d");
@@ -358,13 +339,9 @@ footer a { color: var(--accent); }
       return { title: `Signal as TE changes (TR ${fmtTR(state.TR)})`, x0: 0, x1: 200, x: state.TE, xlabel: "TE (milliseconds)",
                f: (t, x) => se(t, state.TR, x), ticks: [0, 50, 100, 150, 200], fmt: v => String(v),
                note: "Long TE: tissues with a short T2 (white, then grey matter) have faded; fluid fades slowly." };
-    if (state.mode === "gre")
-      return { title: "Signal as flip angle changes (TR 20 ms, TE 3 ms)", x0: 0, x1: 60, x: state.FA, xlabel: "flip angle (degrees)",
-               f: (t, x) => gre(t, x), ticks: [0, 10, 20, 30, 40, 50, 60], fmt: v => String(v),
-               note: "Each tissue peaks at its own best angle (the Ernst angle). Above about 9°, short-T1 white matter gives the most signal." };
-    return { title: `Signal as TI changes (TR 10 s, TE ${state.TEir} ms)`, x0: 0, x1: 4000, x: state.TI, xlabel: "TI (seconds)",
-             f: (t, x) => ir(t, x, state.TEir), ticks: [0, 1000, 2000, 3000, 4000], fmt: v => String(v / 1000),
-             signed: true, note: "Below the line the magnetisation is still upside down. The image shows the size of the signal, so a tissue vanishes where its curve crosses zero." };
+    return { title: "Signal as flip angle changes (TR 20 ms, TE 3 ms)", x0: 0, x1: 60, x: state.FA, xlabel: "flip angle (degrees)",
+             f: (t, x) => gre(t, x), ticks: [0, 10, 20, 30, 40, 50, 60], fmt: v => String(v),
+             note: "Each tissue peaks at its own best angle (the Ernst angle). Above about 9°, short-T1 white matter gives the most signal." };
   }
 
   function niceTicks(lo, hi) {
@@ -401,9 +378,9 @@ footer a { color: var(--accent); }
     const pw = cw - L - R, ph = ch - Tp - Bm;
     const xs = Array.from({ length: 241 }, (_, i) => sp.x0 + (sp.x1 - sp.x0) * i / 240);
     const ys = Object.fromEntries(T.map(t => [t, xs.map(x => sp.f(t, x))]));
-    let y0 = 0, y1 = Math.max(...T.flatMap(t => ys[t])) * 1.12;
-    if (sp.signed) { y0 = Math.min(...T.flatMap(t => ys[t])) * 1.1; y1 = Math.max(y1, 0.15); }
-    if (!sp.signed && state.mode === "se") y1 = 1.0;
+    const y0 = 0;
+    let y1 = Math.max(...T.flatMap(t => ys[t])) * 1.12;
+    if (state.mode === "se") y1 = 1.0;
     const X = x => L + pw * (x - sp.x0) / (sp.x1 - sp.x0);
     const Y = y => Tp + ph * (1 - (y - y0) / (y1 - y0));
     const fg = css("--fg"), muted = css("--muted"), line = css("--line");
@@ -422,7 +399,6 @@ footer a { color: var(--accent); }
     const yt = niceTicks(y0, y1);
     const dec = yt.step < 0.01 ? 1 : 0;
     yt.ticks.forEach(v => c.fillText((100 * v).toFixed(dec) + "%", L - 6, Y(v)));
-    if (sp.signed) { c.strokeStyle = muted; c.beginPath(); c.moveTo(L, Y(0)); c.lineTo(L + pw, Y(0)); c.stroke(); }
     // cursor
     c.strokeStyle = fg; c.lineWidth = 1.2; c.beginPath(); c.moveTo(X(sp.x), Tp); c.lineTo(X(sp.x), Tp + ph); c.stroke();
     // curves
@@ -462,20 +438,18 @@ footer a { color: var(--accent); }
   }
 
   // ---------- UI wiring ----------
-  const rows = { tr: $("row-tr"), te: $("row-te"), fa: $("row-fa"), ti: $("row-ti") };
+  const rows = { tr: $("row-tr"), te: $("row-te"), fa: $("row-fa") };
 
   function syncControls() {
-    $("te").max = state.mode === "ir" ? 150 : 200;     // set the range before the value
     $("tr").value = posFromTr(state.TR);
-    $("te").value = state.mode === "ir" ? state.TEir : state.TE;
-    $("fa").value = state.FA; $("ti").value = state.TI;
+    $("te").value = state.TE;
+    $("fa").value = state.FA;
     rows.tr.hidden = state.mode !== "se";
-    rows.te.hidden = state.mode === "gre";
+    rows.te.hidden = state.mode !== "se";
     rows.fa.hidden = state.mode !== "gre";
-    rows.ti.hidden = state.mode !== "ir";
     document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode)));
     $("explain").textContent = EXPLAIN[state.mode];
-    $("fixed").textContent = state.mode === "gre" ? "Fixed: TR 20 ms, TE 3 ms" : state.mode === "ir" ? "Fixed: TR 10 s" : "";
+    $("fixed").textContent = state.mode === "gre" ? "Fixed: TR 20 ms, TE 3 ms" : "";
   }
 
   function render() {
@@ -483,28 +457,24 @@ footer a { color: var(--accent); }
     $("tr-out").textContent = fmtTR(state.TR);
     $("tr").setAttribute("aria-valuetext", fmtTR(state.TR));
     $("noisenote").hidden = !$("noise").checked;
-    $("te-out").textContent = (state.mode === "ir" ? state.TEir : state.TE) + " ms";
+    $("te-out").textContent = state.TE + " ms";
     $("fa-out").textContent = state.FA + "°";
-    $("ti-out").textContent = state.TI + " ms";
     const v = verdict(s);
     $("verdict").textContent = v;
     $("params").textContent = state.mode === "se" ? `Spin echo · TR ${fmtTR(state.TR)} · TE ${state.TE} ms`
-      : state.mode === "gre" ? `Gradient echo · flip angle ${state.FA}° · TR 20 ms · TE 3 ms`
-      : `Inversion recovery · TI ${state.TI} ms · TE ${state.TEir} ms · TR 10 s`;
+      : `Gradient echo · flip angle ${state.FA}° · TR 20 ms · TE 3 ms`;
     drawImage(s); drawOrder(s); drawBars(s); drawChart();
   }
 
   $("tr").addEventListener("input", e => { state.TR = Math.round(trFromPos(+e.target.value) / 10) * 10; state.active = "TR"; render(); });
-  $("te").addEventListener("input", e => { if (state.mode === "ir") state.TEir = +e.target.value; else { state.TE = +e.target.value; state.active = "TE"; } render(); });
+  $("te").addEventListener("input", e => { state.TE = +e.target.value; state.active = "TE"; render(); });
   $("fa").addEventListener("input", e => { state.FA = +e.target.value; render(); });
-  $("ti").addEventListener("input", e => { state.TI = +e.target.value; render(); });
   ["rescale", "noise"].forEach(id => $(id).addEventListener("change", render));
   document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => { state.mode = b.dataset.mode; syncControls(); render(); }));
   const PRESETS = {
     t1: { mode: "se", TR: 500, TE: 15, active: "TR" },
     pd: { mode: "se", TR: 10000, TE: 15, active: "TR" },
-    t2: { mode: "se", TR: 10000, TE: 100, active: "TE" },
-    flair: { mode: "ir", TI: Math.round(irNull("CSF") / 5) * 5, TEir: 100 }
+    t2: { mode: "se", TR: 10000, TE: 100, active: "TE" }
   };
   document.querySelectorAll(".presets button").forEach(b => b.addEventListener("click", () => { Object.assign(state, PRESETS[b.dataset.preset]); syncControls(); render(); }));
 
