@@ -356,15 +356,22 @@ footer a { color: var(--accent); }
 
   // ---------- chart ----------
   const chart = $("chart");
+  // notes describe where the cursor sits, using the same cut-offs as verdict()
+  const trNote = TR => TR <= 1000 ? "Short TR: tissues with a long T1 (fluid) have not recovered, so they lose signal first."
+    : TR >= 6000 ? "Long TR: every tissue has mostly recovered, so T1 matters less and brightness follows water content (proton density)."
+    : "Middle TR: white matter has mostly recovered, but fluid, with its long T1, is still catching up.";
+  const teNote = TE => TE <= 30 ? "Short TE: there is little time for the signal to fade, so T2 matters less and brightness follows water content."
+    : TE >= 70 ? "Long TE: tissues with a short T2 (white, then grey matter) have faded; fluid fades slowly."
+    : "Middle TE: white and grey matter have started to fade; fluid has barely changed.";
   function chartSpec() {
     if (state.mode === "se" && state.active === "TR")
       return { title: `Signal as TR changes (TE ${state.TE} ms)`, x0: 0, x1: 10000, x: state.TR, xlabel: "TR (seconds)",
                f: (t, x) => se(t, Math.max(x, state.TE + 1), state.TE), ticks: [0, 2000, 4000, 6000, 8000, 10000],
-               fmt: v => String(v / 1000), note: "Short TR: tissues with a long T1 (fluid) have not recovered, so they lose signal first." };
+               fmt: v => String(v / 1000), note: trNote(trShown(state.TR)) };
     if (state.mode === "se")
       return { title: `Signal as TE changes (TR ${fmtTR(state.TR)})`, x0: 0, x1: 200, x: state.TE, xlabel: "TE (milliseconds)",
                f: (t, x) => se(t, state.TR, x), ticks: [0, 50, 100, 150, 200], fmt: v => String(v),
-               note: "Long TE: tissues with a short T2 (white, then grey matter) have faded; fluid fades slowly." };
+               note: teNote(state.TE) };
     return { title: "Signal as flip angle changes (TR 20 ms, TE 3 ms)", x0: 0, x1: 60, x: state.FA, xlabel: "flip angle (degrees)",
              f: (t, x) => gre(t, x), ticks: [0, 10, 20, 30, 40, 50, 60], fmt: v => String(v),
              note: "Each tissue peaks at its own best angle (the Ernst angle). Above about 9°, short-T1 white matter gives the most signal." };
